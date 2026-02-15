@@ -99,6 +99,18 @@ impl AlzArchive {
         Ok(archive)
     }
 
+    pub fn from_bytes(data: Vec<u8>) -> AlzResult<Self> {
+        let reader = MultiVolumeReader::from_bytes(data);
+        let mut archive = AlzArchive {
+            reader,
+            entries: Vec::new(),
+            is_encrypted: false,
+            is_data_descr: false,
+        };
+        archive.parse()?;
+        Ok(archive)
+    }
+
     fn parse(&mut self) -> AlzResult<()> {
         let mut seen_alz_header = false;
 

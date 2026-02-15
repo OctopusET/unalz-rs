@@ -14,6 +14,7 @@ cargo build --release
 
 ```
 unalz [-l] [-p] [-q] [-d DIR] [--pwd PASSWORD] archive.alz [file ...]
+cat archive.alz | unalz -l -
 ```
 
 - `-l` -- list archive contents
@@ -21,6 +22,7 @@ unalz [-l] [-p] [-q] [-d DIR] [--pwd PASSWORD] archive.alz [file ...]
 - `-q` -- quiet (suppress progress)
 - `-d DIR` -- extract to directory
 - `--pwd PASSWORD` -- set decryption password
+- `-` -- read archive from stdin
 - `file ...` -- extract only named files (default: all)
 
 ## Features
@@ -33,6 +35,7 @@ unalz [-l] [-p] [-q] [-d DIR] [--pwd PASSWORD] archive.alz [file ...]
 - [x] CP949/EUC-KR filename decoding to UTF-8
 - [x] CRC32 verification
 - [x] DOS timestamp preservation
+- [x] Stdin support (`-`)
 
 ## Format
 

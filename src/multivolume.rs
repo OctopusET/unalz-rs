@@ -4,12 +4,15 @@ use std::path::Path;
 
 use crate::error::{AlzError, AlzResult};
 
+trait ReadSeek: Read + Seek {}
+impl<T: Read + Seek> ReadSeek for T {}
+
 const MAX_VOLUMES: usize = 1000;
 const MULTIVOL_HEAD_SIZE: u64 = 8;
 const MULTIVOL_TAIL_SIZE: u64 = 16;
 
 struct Volume {
-    file: File,
+    file: Box<dyn ReadSeek>,
     file_size: u64,
     header_size: u64,
     tail_size: u64,
@@ -65,7 +68,7 @@ impl MultiVolumeReader {
             let tail_size = MULTIVOL_TAIL_SIZE; // corrected for last volume below
 
             volumes.push(Volume {
-                file,
+                file: Box::new(file),
                 file_size,
                 header_size,
                 tail_size,
@@ -92,6 +95,21 @@ impl MultiVolumeReader {
         // Position at the data start of volume 0.
         reader.seek_to_virtual(0)?;
         Ok(reader)
+    }
+
+    /// Create a single-volume reader from in-memory data (e.g. stdin).
+    pub fn from_bytes(data: Vec<u8>) -> Self {
+        let len = data.len() as u64;
+        MultiVolumeReader {
+            volumes: vec![Volume {
+                file: Box::new(io::Cursor::new(data)),
+                file_size: len,
+                header_size: 0,
+                tail_size: 0,
+            }],
+            cur_volume: 0,
+            virtual_pos: 0,
+        }
     }
 
     /// Total virtual data size across all volumes.

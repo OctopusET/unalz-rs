@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::Path;
 use std::process;
 
@@ -31,7 +31,7 @@ struct Cli {
     #[arg(long = "pwd", value_name = "PASSWORD")]
     password: Option<String>,
 
-    /// Archive file (.alz)
+    /// Archive file (.alz), or "-" for stdin
     archive: String,
 
     /// Files to extract (if empty, extract all)
@@ -47,12 +47,28 @@ fn main() {
         eprintln!("unalz-rs v{}", env!("CARGO_PKG_VERSION"));
     }
 
-    let mut archive = match AlzArchive::open(&cli.archive) {
-        Ok(a) => a,
-        Err(e) => {
-            eprintln!("file open error : {}", cli.archive);
+    let mut archive = if cli.archive == "-" {
+        let mut data = Vec::new();
+        if let Err(e) = std::io::stdin().read_to_end(&mut data) {
             eprintln!("err: {e}");
             process::exit(1);
+        }
+        match AlzArchive::from_bytes(data) {
+            Ok(a) => a,
+            Err(e) => {
+                eprintln!("file open error : stdin");
+                eprintln!("err: {e}");
+                process::exit(1);
+            }
+        }
+    } else {
+        match AlzArchive::open(&cli.archive) {
+            Ok(a) => a,
+            Err(e) => {
+                eprintln!("file open error : {}", cli.archive);
+                eprintln!("err: {e}");
+                process::exit(1);
+            }
         }
     };
 
