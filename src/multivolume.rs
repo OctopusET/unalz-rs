@@ -30,6 +30,7 @@ pub struct MultiVolumeReader {
     volumes: Vec<Volume>,
     cur_volume: usize,
     virtual_pos: u64,
+    tail: [u8; 16],
 }
 
 impl MultiVolumeReader {
@@ -87,10 +88,19 @@ impl MultiVolumeReader {
             last.tail_size = 0;
         }
 
+        // Read the 16-byte file tail from the first volume.
+        let mut tail = [0u8; 16];
+        let vol0 = &mut volumes[0];
+        if vol0.file_size >= 16 {
+            vol0.file.seek(SeekFrom::Start(vol0.file_size - 16))?;
+            vol0.file.read_exact(&mut tail)?;
+        }
+
         let mut reader = MultiVolumeReader {
             volumes,
             cur_volume: 0,
             virtual_pos: 0,
+            tail,
         };
         // Position at the data start of volume 0.
         reader.seek_to_virtual(0)?;
@@ -100,6 +110,10 @@ impl MultiVolumeReader {
     /// Create a single-volume reader from in-memory data (e.g. stdin).
     pub fn from_bytes(data: Vec<u8>) -> Self {
         let len = data.len() as u64;
+        let mut tail = [0u8; 16];
+        if data.len() >= 16 {
+            tail.copy_from_slice(&data[data.len() - 16..]);
+        }
         MultiVolumeReader {
             volumes: vec![Volume {
                 file: Box::new(io::Cursor::new(data)),
@@ -109,7 +123,13 @@ impl MultiVolumeReader {
             }],
             cur_volume: 0,
             virtual_pos: 0,
+            tail,
         }
+    }
+
+    /// The 16-byte file tail (endInfos) from the first volume.
+    pub fn tail(&self) -> &[u8; 16] {
+        &self.tail
     }
 
     /// Total virtual data size across all volumes.

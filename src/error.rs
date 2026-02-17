@@ -10,6 +10,7 @@ pub enum AlzError {
     InflateFailed(String),
     Bzip2Failed(String),
     InvalidFileCrc { expected: u32, got: u32 },
+    InvalidSizeFieldWidth(u8),
     UnknownCompressionMethod(u8),
     PasswordNotSet,
     InvalidPassword,
@@ -32,6 +33,9 @@ impl fmt::Display for AlzError {
                     f,
                     "invalid file CRC: expected {expected:08x}, got {got:08x}"
                 )
+            }
+            Self::InvalidSizeFieldWidth(v) => {
+                write!(f, "invalid size field width: 0x{v:02x}")
             }
             Self::UnknownCompressionMethod(m) => write!(f, "unknown compression method: {m}"),
             Self::PasswordNotSet => write!(f, "password was not set"),

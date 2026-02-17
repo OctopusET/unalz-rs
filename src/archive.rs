@@ -10,6 +10,8 @@ const SIG_ALZ_FILE_HEADER: u32 = 0x015a4c41; // "ALZ\x01"
 const SIG_LOCAL_FILE_HEADER: u32 = 0x015a4c42; // "BLZ\x01"
 const SIG_CENTRAL_DIRECTORY: u32 = 0x015a4c43; // "CLZ\x01"
 const SIG_END_OF_CENTRAL_DIR: u32 = 0x025a4c43; // "CLZ\x02"
+const SIG_COMMENT: u32 = 0x015a4c45; // "ELZ\x01"
+const SIG_SPLIT_MARKER: u32 = 0x035a4c43; // "CLZ\x03"
 
 // File descriptor flags
 const DESC_ENCRYPTED: u8 = 0x01;
@@ -18,8 +20,10 @@ const DESC_DATA_DESCR: u8 = 0x08;
 // File attributes
 pub const ATTR_READONLY: u8 = 0x01;
 pub const ATTR_HIDDEN: u8 = 0x02;
+pub const ATTR_SYSTEM: u8 = 0x04;
 pub const ATTR_DIRECTORY: u8 = 0x10;
-pub const ATTR_FILE: u8 = 0x20;
+pub const ATTR_ARCHIVE: u8 = 0x20;
+pub const ATTR_SYMLINK: u8 = 0x40;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompressionMethod {
@@ -114,6 +118,10 @@ impl AlzArchive {
     fn parse(&mut self) -> AlzResult<()> {
         let mut seen_alz_header = false;
 
+        // Parse endInfos from the 16-byte file tail.
+        let tail = *self.reader.tail();
+        let comment_section_size = u32::from_le_bytes([tail[4], tail[5], tail[6], tail[7]]) as u64;
+
         while let Ok(sig) = self.read_u32_le() {
             match sig {
                 SIG_ALZ_FILE_HEADER => {
@@ -129,6 +137,10 @@ impl AlzArchive {
                 SIG_END_OF_CENTRAL_DIR => {
                     break;
                 }
+                SIG_COMMENT => {
+                    self.skip_comment_section(comment_section_size)?;
+                }
+                SIG_SPLIT_MARKER => {}
                 _ => {
                     if seen_alz_header {
                         return Err(AlzError::CorruptedFile);
@@ -143,7 +155,7 @@ impl AlzArchive {
     }
 
     fn read_alz_header(&mut self) -> AlzResult<()> {
-        // ALZ file header: 4 bytes unknown
+        // 2 bytes version + 2 bytes ID
         let mut buf = [0u8; 4];
         self.reader.read_exact(&mut buf)?;
         Ok(())
@@ -169,8 +181,14 @@ impl AlzArchive {
         }
 
         // Size field width from descriptor bits 4-7
-        let byte_len = (file_descriptor >> 4) as usize;
-        // byte_len: 1=1B, 2=2B, 4=4B, 8=8B (the high nibble divided by 0x10)
+        let byte_len = match file_descriptor & 0xF0 {
+            0x00 => 0,
+            0x10 => 1,
+            0x20 => 2,
+            0x40 => 4,
+            0x80 => 8,
+            _ => return Err(AlzError::InvalidSizeFieldWidth(file_descriptor & 0xF0)),
+        };
 
         let mut compression_method = CompressionMethod::Store;
         let mut file_crc: u32 = 0;
@@ -241,6 +259,15 @@ impl AlzArchive {
         // Central directory structure head: 12 bytes (3 x u32)
         let mut buf = [0u8; 12];
         self.reader.read_exact(&mut buf)?;
+        Ok(())
+    }
+
+    fn skip_comment_section(&mut self, total_size: u64) -> AlzResult<()> {
+        // total_size includes the 4-byte signature we already read.
+        if total_size > 4 {
+            let skip = total_size - 4;
+            self.reader.seek(SeekFrom::Current(skip as i64))?;
+        }
         Ok(())
     }
 

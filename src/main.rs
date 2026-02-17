@@ -4,7 +4,7 @@ use std::process;
 
 use clap::Parser;
 
-use unalz_rs::archive::{AlzArchive, ATTR_DIRECTORY, ATTR_FILE, ATTR_HIDDEN, ATTR_READONLY};
+use unalz_rs::archive::{AlzArchive, ATTR_ARCHIVE, ATTR_DIRECTORY, ATTR_HIDDEN, ATTR_READONLY};
 use unalz_rs::dostime::dos_datetime_to_string;
 use unalz_rs::extract;
 
@@ -148,7 +148,7 @@ fn list_archive(archive: &AlzArchive, source: &str) {
         let a = entry.file_attribute;
         let attr = format!(
             "{}{}{}{}",
-            if a & ATTR_FILE != 0 { "A" } else { "_" },
+            if a & ATTR_ARCHIVE != 0 { "A" } else { "_" },
             if a & ATTR_DIRECTORY != 0 { "D" } else { "_" },
             if a & ATTR_READONLY != 0 { "R" } else { "_" },
             if a & ATTR_HIDDEN != 0 { "H" } else { "_" },
