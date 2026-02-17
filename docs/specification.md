@@ -1,6 +1,6 @@
 # ALZ Archive Format
 
-Slop coded. Reverse-engineered specification. No official documentation exists.
+Reverse-engineered specification. No official documentation exists.
 
 All multi-byte integers are little-endian unless stated otherwise.
 
@@ -9,11 +9,18 @@ All multi-byte integers are little-endian unless stated otherwise.
 An ALZ archive consists of a sequence of tagged records identified by 4-byte signatures:
 
 ```
-[ALZ File Header]
-[Local File Header + File Data] *
-[Central Directory Structure]
+[ALZ File Header]         8 bytes
+[Local File Header 0]     variable
+  [Compressed data]
+[Local File Header 1 ...]
+[Comment Section]         optional
+[Central Directory]       optional, not used for extraction
 [End of Central Directory]
 ```
+
+The archive is parsed sequentially. The last 16 bytes of the file contain a
+tail structure (section 9) that is read first to determine the comment section
+size.
 
 ## 2. Signatures
 
@@ -23,13 +30,16 @@ An ALZ archive consists of a sequence of tagged records identified by 4-byte sig
 | `0x015a4c42` | Local file header |
 | `0x015a4c43` | Central directory structure |
 | `0x025a4c43` | End of central directory |
+| `0x015a4c45` | Comment section |
+| `0x035a4c43` | Split marker |
 
 ## 3. ALZ File Header
 
 | Offset | Size | Description |
 |--------|------|-------------|
 | +0 | 4 | Signature `0x015a4c41` |
-| +4 | 4 | Unknown |
+| +4 | 2 | Version |
+| +6 | 2 | ID |
 
 ## 4. Local File Header
 
@@ -49,8 +59,10 @@ An ALZ archive consists of a sequence of tagged records identified by 4-byte sig
 |-----|------|---------|
 | 0 | `0x01` | Read-only |
 | 1 | `0x02` | Hidden |
+| 2 | `0x04` | System |
 | 4 | `0x10` | Directory |
-| 5 | `0x20` | File |
+| 5 | `0x20` | Archive |
+| 6 | `0x40` | Symlink |
 
 ### 4.3 File Descriptor
 
@@ -69,6 +81,8 @@ The high nibble `(fileDescriptor >> 4)` gives the byte width N of the compressed
 | `0x20` | 2 |
 | `0x40` | 4 |
 | `0x80` | 8 |
+
+Only these values are valid. Any other value (e.g., `0x30`, `0x50`) is an error.
 
 ### 4.4 Variable Part (present when N > 0)
 
@@ -95,6 +109,8 @@ The high nibble `(fileDescriptor >> 4)` gives the byte width N of the compressed
 | 0 | Store (uncompressed) |
 | 1 | ALZ-modified bzip2, see 5.1 |
 | 2 | Raw DEFLATE (RFC 1951, no wrapper) |
+
+Values 3+ are undefined. Unknown methods are a fatal error.
 
 ### 5.1 ALZ-Modified bzip2
 
@@ -133,7 +149,7 @@ Three 32-bit keys, initialized:
 ```
 key[0] = 0x12345678
 key[1] = 0x23456789
-key[2] = 0x3456789A
+key[2] = 0x34567890
 ```
 
 Each password byte is processed through UpdateKeys (6.2).
@@ -146,7 +162,8 @@ key[1] = (key[1] + (key[0] & 0xFF)) * 134775813 + 1
 key[2] = CRC32_TABLE[(key[2] ^ (key[1] >> 24)) & 0xFF] ^ (key[2] >> 8)
 ```
 
-CRC32 polynomial: `0xEDB88320`.
+The constant 134775813 is `0x08088405` in hexadecimal. CRC32 polynomial:
+`0xEDB88320`.
 
 ### 6.3 DecryptByte()
 
@@ -168,8 +185,8 @@ UpdateKeys(plain)
 
 The 12-byte encryption header (after filename) is decrypted. The last decrypted byte must equal:
 
-- `(fileCRC >> 24)` normally
-- `(fileTimeDate >> 8)` if data descriptor flag is set
+- `(fileCRC >> 24) & 0xFF` normally
+- `(fileTimeDate >> 8) & 0xFF` if data descriptor flag (bit 3) is set
 
 On match, re-initialize keys with the password and re-process the 12-byte header to establish the correct key state for data decryption.
 
@@ -184,7 +201,39 @@ Bits 21-24: month
 Bits 25-31: year - 1980
 ```
 
-## 8. Central Directory Structure
+## 8. Comment Section
+
+Signature: `0x015a4c45`
+
+The comment section total size (including the 4-byte signature) is stored in
+`endInfos[1]` of the file tail (section 9). After the signature, the
+remaining size is `endInfos[1] - 4` bytes.
+
+The section contains a sequence of comment entries:
+
+| Offset | Size | Field | Description |
+|--------|------|-------|-------------|
+| +0 | 4 | fileIndex | File index (`0xFFFFFFFF` = archive-level comment) |
+| +4 | 2 | commentSize | Comment data size |
+| +6 | N | comment | Comment text (local codepage encoding) |
+
+Entries repeat until the section size is consumed. Each entry is `6 + commentSize` bytes.
+
+## 9. File Tail
+
+The last 16 bytes of an ALZ file contain four UInt32 values:
+
+| Offset | Size | Field | Description |
+|--------|------|-------|-------------|
+| +0 | 4 | endInfos[0] | Unknown |
+| +4 | 4 | endInfos[1] | Comment section total size (including signature) |
+| +8 | 4 | endInfos[2] | Unknown |
+| +12 | 4 | endInfos[3] | Unknown |
+
+Read these 16 bytes first (seek to EOF-16), then seek back to the beginning
+to parse sequentially. If `endInfos[1] <= 4`, there is no comment data.
+
+## 10. Central Directory Structure
 
 | Offset | Size | Description |
 |--------|------|-------------|
@@ -195,7 +244,7 @@ Bits 25-31: year - 1980
 
 Not used for extraction. The archive is parsed sequentially.
 
-## 9. End of Central Directory
+## 11. End of Central Directory
 
 | Offset | Size | Description |
 |--------|------|-------------|
@@ -203,9 +252,9 @@ Not used for extraction. The archive is parsed sequentially.
 
 No additional fields.
 
-## 10. Multi-Volume Archives
+## 12. Multi-Volume Archives
 
-### 10.1 Volume Naming
+### 12.1 Volume Naming
 
 | Volume | Extension |
 |--------|-----------|
@@ -219,7 +268,7 @@ No additional fields.
 
 For volume index i > 0: letter = `'a' + (i-1)/100`, number = `(i-1) % 100`, extension = `{letter}{number:02}`. Maximum 1000 volumes.
 
-### 10.2 Volume Layout
+### 12.2 Volume Layout
 
 First volume (`.alz`):
 
@@ -243,9 +292,13 @@ Last volume:
 [data...]
 ```
 
-The header and tail are opaque metadata skipped during I/O. Usable data per volume = `file_size - header_size - tail_size`.
+The last volume has no 16-byte tail. For a single-volume archive (first = last),
+there is no header and no tail subtracted from the data region.
 
-### 10.3 Constants
+The header and tail are opaque metadata skipped during I/O. Usable data per
+volume = `file_size - header_size - tail_size`.
+
+### 12.3 Constants
 
 | Name | Value |
 |------|-------|
@@ -253,10 +306,12 @@ The header and tail are opaque metadata skipped during I/O. Usable data per volu
 | Tail size | 16 bytes |
 | Max volumes | 1000 |
 
-## 11. CRC32
+## 13. CRC32
 
 Standard CRC32 with polynomial `0xEDB88320`. Computed over decompressed (and decrypted) file data. Verified against `fileCRC` from the local file header.
 
-## 12. Filename Encoding
+## 14. Filename Encoding
 
 Filenames are typically CP949 (a superset of EUC-KR). If the bytes are valid UTF-8, they should be interpreted as UTF-8. Otherwise, decode as CP949.
+
+Path separators may be `/` or `\`; normalize to the platform convention.
