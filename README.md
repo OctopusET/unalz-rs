@@ -31,7 +31,7 @@ cat archive.alz | unalz -l -
 - [x] Deflate extraction
 - [ ] ALZ-modified bzip2 extraction
 - [x] Multi-volume archives (.alz, .a00, .a01, ...)
-- [ ] PKware ZIP traditional encryption (implemented, untested)
+- [x] PKware ZIP traditional encryption
 - [x] CP949/EUC-KR filename decoding to UTF-8
 - [x] CRC32 verification
 - [x] DOS timestamp preservation
