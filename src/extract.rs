@@ -60,10 +60,8 @@ pub fn extract_entry(
     }
 
     // Ensure parent directory exists.
-    if !pipe_mode {
-        if let Some(parent) = dest_path.parent() {
-            fs::create_dir_all(parent)?;
-        }
+    if !pipe_mode && let Some(parent) = dest_path.parent() {
+        fs::create_dir_all(parent)?;
     }
 
     // Seek to data position.

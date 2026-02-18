@@ -112,8 +112,8 @@ fn raw_decompress() {
 
 #[test]
 fn deflate_decompress() {
-    use flate2::write::DeflateEncoder;
     use flate2::Compression;
+    use flate2::write::DeflateEncoder;
     use std::io::Write;
 
     let input = b"hello";

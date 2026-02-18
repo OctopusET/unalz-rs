@@ -4,7 +4,7 @@ use std::process;
 
 use clap::Parser;
 
-use unalz_rs::archive::{AlzArchive, ATTR_ARCHIVE, ATTR_DIRECTORY, ATTR_HIDDEN, ATTR_READONLY};
+use unalz_rs::archive::{ATTR_ARCHIVE, ATTR_DIRECTORY, ATTR_HIDDEN, ATTR_READONLY, AlzArchive};
 use unalz_rs::dostime::dos_datetime_to_string;
 use unalz_rs::extract;
 
