@@ -51,17 +51,27 @@ pub fn extract_entry(
 
     let dest_path = dest_dir.join(&file_name);
 
+    // Security: reject absolute paths and any remaining traversal.
+    if !pipe_mode {
+        let canonical_dest = fs::canonicalize(dest_dir)?;
+        // dest_path may not exist yet; resolve via its parent directory.
+        let resolved = if let Some(parent) = dest_path.parent() {
+            fs::create_dir_all(parent)?;
+            fs::canonicalize(parent)?.join(dest_path.file_name().unwrap_or_default())
+        } else {
+            dest_path.clone()
+        };
+        if !resolved.starts_with(&canonical_dest) {
+            return Err(AlzError::PathTraversal(file_name));
+        }
+    }
+
     // Handle directories.
     if entry.is_directory() {
         if !pipe_mode {
             fs::create_dir_all(&dest_path)?;
         }
         return Ok(());
-    }
-
-    // Ensure parent directory exists.
-    if !pipe_mode && let Some(parent) = dest_path.parent() {
-        fs::create_dir_all(parent)?;
     }
 
     // Seek to data position.
@@ -92,6 +102,9 @@ pub fn extract_entry(
 
     // Verify CRC.
     if crc != entry.file_crc {
+        if !pipe_mode {
+            let _ = fs::remove_file(&dest_path);
+        }
         return Err(AlzError::InvalidFileCrc {
             expected: entry.file_crc,
             got: crc,

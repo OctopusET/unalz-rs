@@ -5,8 +5,8 @@ use flate2::{Decompress, FlushDecompress, Status};
 use crate::crypto::ZipCrypto;
 use crate::error::{AlzError, AlzResult};
 
-const IN_BUF_SIZE: usize = 4096;
-const OUT_BUF_SIZE: usize = 4096;
+const IN_BUF_SIZE: usize = 32768;
+const OUT_BUF_SIZE: usize = 32768;
 
 /// Extract DEFLATE compressed data (raw deflate, no zlib/gzip header).
 /// Returns the CRC32 of the decompressed data.

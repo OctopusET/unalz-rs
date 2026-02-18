@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use crate::crypto::ZipCrypto;
 use crate::error::{AlzError, AlzResult};
 
-const BUF_SIZE: usize = 8192;
+const BUF_SIZE: usize = 32768;
 
 /// Extract uncompressed data, optionally decrypting.
 /// Returns the CRC32 of the extracted data.
