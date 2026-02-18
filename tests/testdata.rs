@@ -30,16 +30,23 @@ macro_rules! skip {
     };
 }
 
-fn extract(path: &str, password: Option<&str>) -> PathBuf {
+fn extract_to(path: &str, password: Option<&str>, tag: &str) -> PathBuf {
     let mut archive = AlzArchive::open(path).unwrap();
     let dir = std::env::temp_dir().join(format!(
-        "unalz-rs-{}",
-        Path::new(path).file_stem().unwrap().to_str().unwrap()
+        "unalz-rs-{}-{}",
+        Path::new(path).file_stem().unwrap().to_str().unwrap(),
+        tag
     ));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     unalz_rs::extract::extract_all(&mut archive, &dir, password, false, true).unwrap();
     dir
+}
+
+macro_rules! extract {
+    ($path:expr, $pwd:expr) => {
+        extract_to($path, $pwd, concat!(module_path!(), "::", line!()))
+    };
 }
 
 // --- Store ---
@@ -57,7 +64,7 @@ fn store_list() {
 #[test]
 fn store_extract() {
     let path = skip!("store.alz");
-    let dir = extract(&path, None);
+    let dir = extract!(&path, None);
     assert_eq!(
         std::fs::read(dir.join("hello.txt")).unwrap(),
         source("hello.txt")
@@ -115,7 +122,7 @@ fn deflate_normal_list() {
 #[test]
 fn deflate_normal_extract() {
     let path = skip!("normal.alz");
-    let dir = extract(&path, None);
+    let dir = extract!(&path, None);
     assert_eq!(
         std::fs::read(dir.join("hello.txt")).unwrap(),
         source("hello.txt")
@@ -135,7 +142,7 @@ fn deflate_normal_extract() {
 #[test]
 fn deflate_low_extract() {
     let path = skip!("low.alz");
-    let dir = extract(&path, None);
+    let dir = extract!(&path, None);
     assert_eq!(
         std::fs::read(dir.join("hello.txt")).unwrap(),
         source("hello.txt")
@@ -161,7 +168,7 @@ fn encrypted_list() {
 #[test]
 fn encrypted_extract() {
     let path = skip!("zip20.alz");
-    let dir = extract(&path, Some("test1234"));
+    let dir = extract!(&path, Some("test1234"));
     assert_eq!(
         std::fs::read(dir.join("hello.txt")).unwrap(),
         source("hello.txt")
@@ -214,7 +221,7 @@ fn split_list() {
 #[test]
 fn split_extract() {
     let path = skip!("split.alz");
-    let dir = extract(&path, None);
+    let dir = extract!(&path, None);
     // split archive has the full 10MB large.txt matching source
     assert_eq!(
         std::fs::read(dir.join("large.txt")).unwrap(),
@@ -235,7 +242,7 @@ fn split_extract() {
 #[test]
 fn empty_file() {
     let path = skip!("store.alz");
-    let dir = extract(&path, None);
+    let dir = extract!(&path, None);
     let empty = std::fs::read(dir.join("empty.txt")).unwrap();
     assert!(empty.is_empty());
 }
@@ -251,6 +258,6 @@ fn cp949_extended_filename() {
 #[test]
 fn nested_directories() {
     let path = skip!("store.alz");
-    let dir = extract(&path, None);
+    let dir = extract!(&path, None);
     assert!(dir.join("subdir/nested/deep.txt").exists());
 }

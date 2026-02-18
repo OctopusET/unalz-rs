@@ -74,6 +74,36 @@ pub fn extract_entry(
         return Ok(());
     }
 
+    // Handle symlinks.
+    if entry.is_symlink() {
+        archive.reader.seek(SeekFrom::Start(entry.data_pos))?;
+        let mut limited = (&mut archive.reader).take(entry.compressed_size);
+        let mut buf = Vec::new();
+        let crc = decompress_to(&mut limited, &mut buf, entry, crypto.as_mut())?;
+        if crc != entry.file_crc {
+            return Err(AlzError::InvalidFileCrc {
+                expected: entry.file_crc,
+                got: crc,
+            });
+        }
+        let target = String::from_utf8_lossy(&buf);
+        if pipe_mode {
+            let stdout = io::stdout();
+            let mut out = stdout.lock();
+            out.write_all(target.as_bytes())
+                .map_err(AlzError::CantOpenDestFile)?;
+        } else {
+            if target.contains("../") || target.contains("..\\") {
+                return Err(AlzError::PathTraversal(target.into_owned()));
+            }
+            #[cfg(unix)]
+            std::os::unix::fs::symlink(target.as_ref(), &dest_path)?;
+            #[cfg(not(unix))]
+            fs::write(&dest_path, target.as_bytes())?;
+        }
+        return Ok(());
+    }
+
     // Seek to data position.
     archive.reader.seek(SeekFrom::Start(entry.data_pos))?;
 

@@ -78,6 +78,10 @@ impl AlzFileEntry {
         self.file_attribute & ATTR_DIRECTORY != 0
     }
 
+    pub fn is_symlink(&self) -> bool {
+        self.file_attribute & ATTR_SYMLINK != 0
+    }
+
     pub fn has_data_descriptor(&self) -> bool {
         self.file_descriptor & DESC_DATA_DESCR != 0
     }
