@@ -29,7 +29,7 @@ cat archive.alz | unalz -l -
 
 - [x] Store (uncompressed) extraction
 - [x] Deflate extraction
-- [ ] ALZ-modified bzip2 extraction
+- [x] ALZ-modified bzip2 extraction
 - [x] Multi-volume archives (.alz, .a00, .a01, ...)
 - [x] PKware ZIP traditional encryption
 - [x] CP949/EUC-KR filename decoding to UTF-8

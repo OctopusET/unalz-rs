@@ -2,7 +2,7 @@ use std::io::Cursor;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use unalz_rs::archive::{AlzArchive, CompressionMethod};
-use unalz_rs::decompress::{deflate, raw};
+use unalz_rs::decompress::{bzip2, deflate, raw};
 
 /// Minimal ALZ archive: one file "t/t.txt" containing "42", DEFLATE compressed.
 /// From patool test suite (https://github.com/wummel/patool).
@@ -130,5 +130,26 @@ fn deflate_decompress() {
     assert_eq!(&output, input);
     let mut h = crc32fast::Hasher::new();
     h.update(input);
+    assert_eq!(crc, h.finalize());
+}
+
+#[test]
+fn bzip2_decompress() {
+    // ALZ-format bzip2 data for "hello world" (generated from standard bzip2
+    // by stripping stream header, replacing block/EOS magic with DLZ\x01/\x02,
+    // removing per-block CRC and randomised bit).
+    let alz_bz2: &[u8] = &[
+        0x44, 0x4c, 0x5a, 0x01, 0x00, 0x00, 0x03, 0x23, 0x00, 0x80, 0x00, 0x0c, 0x89, 0x21, 0x00,
+        0x40, 0x00, 0x44, 0x06, 0x69, 0x08, 0x60, 0x43, 0x6d, 0x02, 0xa8, 0x4f, 0x44, 0x4c, 0x5a,
+        0x02,
+    ];
+
+    let mut reader = Cursor::new(alz_bz2);
+    let mut output = Vec::new();
+    let crc = bzip2::extract_bzip2(&mut reader, &mut output, alz_bz2.len() as u64, None).unwrap();
+
+    assert_eq!(&output, b"hello world");
+    let mut h = crc32fast::Hasher::new();
+    h.update(b"hello world");
     assert_eq!(crc, h.finalize());
 }
