@@ -93,7 +93,8 @@ pub fn extract_entry(
             out.write_all(target.as_bytes())
                 .map_err(AlzError::CantOpenDestFile)?;
         } else {
-            if target.contains("../") || target.contains("..\\") {
+            let target_path = Path::new(target.as_ref());
+            if target.contains("../") || target.contains("..\\") || target_path.has_root() {
                 return Err(AlzError::PathTraversal(target.into_owned()));
             }
             #[cfg(unix)]

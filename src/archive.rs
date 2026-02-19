@@ -240,8 +240,10 @@ impl AlzArchive {
 
         // Record data position and skip file data
         let data_pos = self.reader.stream_position()?;
-        self.reader
-            .seek(SeekFrom::Current(compressed_size as i64))?;
+        let skip: i64 = compressed_size
+            .try_into()
+            .map_err(|_| AlzError::CorruptedFile)?;
+        self.reader.seek(SeekFrom::Current(skip))?;
 
         self.entries.push(AlzFileEntry {
             file_name,
@@ -269,8 +271,10 @@ impl AlzArchive {
     fn skip_comment_section(&mut self, total_size: u64) -> AlzResult<()> {
         // total_size includes the 4-byte signature we already read.
         if total_size > 4 {
-            let skip = total_size - 4;
-            self.reader.seek(SeekFrom::Current(skip as i64))?;
+            let skip: i64 = (total_size - 4)
+                .try_into()
+                .map_err(|_| AlzError::CorruptedFile)?;
+            self.reader.seek(SeekFrom::Current(skip))?;
         }
         Ok(())
     }
