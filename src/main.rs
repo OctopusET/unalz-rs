@@ -81,6 +81,9 @@ fn main() {
     let password = if archive.is_encrypted {
         if let Some(ref pwd) = cli.password {
             Some(pwd.clone())
+        } else if cli.archive == "-" {
+            eprintln!("err: encrypted archive from stdin requires --pwd");
+            process::exit(1);
         } else {
             eprint!("Enter Password : ");
             std::io::stderr().flush().ok();
