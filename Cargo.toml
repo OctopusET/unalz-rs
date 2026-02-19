@@ -1,8 +1,9 @@
 [package]
 name = "unalz-rs"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 description = "ALZ archive extractor"
+authors = ["Sungjoon Moon"]
 license = "BSD-2-Clause"
 repository = "https://github.com/OctopusET/unalz-rs"
 readme = "README.md"

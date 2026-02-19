@@ -4,7 +4,9 @@ use std::process;
 
 use clap::Parser;
 
-use unalz_rs::archive::{ATTR_ARCHIVE, ATTR_DIRECTORY, ATTR_HIDDEN, ATTR_READONLY, AlzArchive};
+use unalz_rs::archive::{
+    ATTR_ARCHIVE, ATTR_DIRECTORY, ATTR_HIDDEN, ATTR_READONLY, ATTR_SYMLINK, AlzArchive,
+};
 use unalz_rs::dostime::dos_datetime_to_string;
 use unalz_rs::extract;
 
@@ -138,9 +140,9 @@ fn main() {
 fn list_archive(archive: &AlzArchive, source: &str) {
     println!("\nListing archive: {source}");
     println!();
-    println!("Attr  Uncomp Size    Comp Size Method  Date & Time & File Name");
+    println!("Attr   Uncomp Size    Comp Size Method  Date & Time & File Name");
     println!(
-        "---- ------------ ------------ ------- ------------------------------------------------"
+        "----- ------------ ------------ ------- ------------------------------------------------"
     );
 
     let mut total_uncompressed: u64 = 0;
@@ -150,9 +152,10 @@ fn list_archive(archive: &AlzArchive, source: &str) {
     for entry in &archive.entries {
         let a = entry.file_attribute;
         let attr = format!(
-            "{}{}{}{}",
+            "{}{}{}{}{}",
             if a & ATTR_ARCHIVE != 0 { "A" } else { "_" },
             if a & ATTR_DIRECTORY != 0 { "D" } else { "_" },
+            if a & ATTR_SYMLINK != 0 { "S" } else { "_" },
             if a & ATTR_READONLY != 0 { "R" } else { "_" },
             if a & ATTR_HIDDEN != 0 { "H" } else { "_" },
         );
@@ -174,10 +177,10 @@ fn list_archive(archive: &AlzArchive, source: &str) {
     }
 
     println!(
-        "---- ------------ ------------ ------- ------------------------------------------------"
+        "----- ------------ ------------ ------- ------------------------------------------------"
     );
     let plural = if file_count <= 1 { "" } else { "s" };
     println!(
-        "     {total_uncompressed:>12} {total_compressed:>12}         Total {file_count} file{plural}"
+        "      {total_uncompressed:>12} {total_compressed:>12}         Total {file_count} file{plural}"
     );
 }
