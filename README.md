@@ -1,6 +1,6 @@
 # unalz-rs
 
-Slop coded. ALZ archive extractor (Korean compression format by ESTsoft/ALZip).
+Slop coded. ALZ archive extractor.
 
 Both a library (`unalz_rs`) and a CLI binary (`unalz`).
 
