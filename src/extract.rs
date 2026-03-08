@@ -175,7 +175,7 @@ pub fn extract_all(
     for entry in &entries {
         if !quiet && !pipe_mode {
             eprint!(
-                "\nunalziiiing : {} ({}bytes) ",
+                "\nextracting : {} ({}bytes) ",
                 entry.file_name, entry.uncompressed_size
             );
         }
@@ -201,7 +201,7 @@ pub fn extract_files(
         if let Some(entry) = entries.iter().find(|e| e.file_name == *name) {
             if !quiet && !pipe_mode {
                 eprint!(
-                    "\nunalziiiing : {} ({}bytes) ",
+                    "\nextracting : {} ({}bytes) ",
                     entry.file_name, entry.uncompressed_size
                 );
             }

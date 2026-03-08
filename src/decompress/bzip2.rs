@@ -74,9 +74,9 @@ fn alz_to_bzip2(alz_data: &[u8]) -> AlzResult<Vec<u8>> {
         // each block we copy bits one at a time until we peek "DLZ"
         // or run out of data.
         //
-        // Since block headers are read via GET_UCHAR (8-bit reads from
-        // the bitstream), we need to detect the DLZ pattern at the
-        // current bit position. We peek 32 bits ahead to check.
+        // Block headers use 8-bit reads from the bitstream, so we
+        // need to detect the DLZ pattern at the current bit position.
+        // We peek 32 bits ahead to check.
         loop {
             if reader.bits_remaining() < 32 {
                 // Copy remaining bits.

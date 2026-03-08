@@ -8,8 +8,8 @@ trait ReadSeek: Read + Seek {}
 impl<T: Read + Seek> ReadSeek for T {}
 
 const MAX_VOLUMES: usize = 1000;
-const MULTIVOL_HEAD_SIZE: u64 = 8;
-const MULTIVOL_TAIL_SIZE: u64 = 16;
+const VOLUME_HEADER_SIZE: u64 = 8;
+const VOLUME_TRAILER_SIZE: u64 = 16;
 
 struct Volume {
     file: Box<dyn ReadSeek>,
@@ -65,8 +65,8 @@ impl MultiVolumeReader {
             };
 
             let file_size = file.metadata()?.len();
-            let header_size = if i == 0 { 0 } else { MULTIVOL_HEAD_SIZE };
-            let tail_size = MULTIVOL_TAIL_SIZE; // corrected for last volume below
+            let header_size = if i == 0 { 0 } else { VOLUME_HEADER_SIZE };
+            let tail_size = VOLUME_TRAILER_SIZE; // corrected for last volume below
 
             volumes.push(Volume {
                 file: Box::new(file),
