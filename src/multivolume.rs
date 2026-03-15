@@ -152,7 +152,13 @@ impl MultiVolumeReader {
             remain -= data_size;
         }
 
-        Err(AlzError::CorruptedFile)
+        // Past end of available volumes -- park at EOF so reads return 0.
+        let last = self.volumes.len() - 1;
+        let vol = &mut self.volumes[last];
+        let end = vol.file_size - vol.tail_size;
+        vol.file.seek(SeekFrom::Start(end))?;
+        self.cur_volume = last;
+        Ok(())
     }
 }
 
